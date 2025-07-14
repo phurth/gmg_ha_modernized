@@ -1,7 +1,7 @@
 {
   "domain": "gmg",
   "name": "GMG",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "documentation": "https://github.com/phurth/gmg_ha_modernized",
   "dependencies": [],
   "codeowners": ["@phurth"],
