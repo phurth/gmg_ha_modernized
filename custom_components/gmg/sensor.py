@@ -34,23 +34,22 @@ class GMGProbeSensor(SensorEntity):
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.FAHRENHEIT
-        self._attr_should_poll = True
+        self._attr_should_poll = True  # Enable polling
+        self._attr_update_interval = 30  # Update every 30 seconds
         self._state = {}
         _LOGGER.debug("Initializing GMGProbeSensor for %s", self._attr_unique_id)
 
-    async def async_added_to_hass(self):
-        """Run when entity is added to Home Assistant."""
-        _LOGGER.debug("GMGProbeSensor added to hass for %s", self._attr_unique_id)
-        await self.async_update()
-
     @property
     def native_value(self):
-        return self._state.get(self._state_key)
+        value = self._state.get(self._state_key)
+        _LOGGER.debug("Accessing native_value for %s: %s", self._attr_unique_id, value)
+        return value
 
     async def async_update(self):
-        _LOGGER.debug("Updating GMGProbeSensor for %s", self._attr_unique_id)
+        _LOGGER.debug("Updating GMGProbeSensor for %s at %s", self._attr_unique_id, self._grill._ip)
         try:
             self._state = await self._grill.status()
             _LOGGER.debug("Sensor update for %s: %s", self._state_key, self._state)
         except Exception as e:
             _LOGGER.error("Sensor update failed for %s: %s", self._state_key, e)
+            self._state = {'probe1_temp': None, 'probe2_temp': None}
