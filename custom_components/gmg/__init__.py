@@ -1,12 +1,17 @@
 """GMG integration."""
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-DOMAIN = "gmg"
+from .const import DOMAIN
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Legacy fallback: manually load climate platform."""
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up GMG integration from a config entry."""
     hass.async_create_task(
-        hass.helpers.discovery.async_load_platform("climate", DOMAIN, {}, config)
+        hass.config_entries.async_forward_entry_setup(entry, "climate")
     )
     return True
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload GMG config entry."""
+    return await hass.config_entries.async_forward_entry_unload(entry, "climate")
