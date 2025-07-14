@@ -15,17 +15,16 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     host = config_entry.data["host"]
-    gmg = GMGGrillObject(host)
+    gmg = GMGGrillObject(hass, host)  # Pass hass to the constructor
 
     try:
-        state = gmg.status()
+        state = await gmg.status()  # Use await since status is now async
         _LOGGER.info("Connected to GMG grill at %s: %s", host, state)
     except Exception as e:
         _LOGGER.error("Failed to connect to GMG grill at %s: %s", host, e)
         return
 
     async_add_entities([GMGGrillClimate(gmg)])
-
 
 class GMGGrillClimate(ClimateEntity):
     def __init__(self, grill):
@@ -68,18 +67,18 @@ class GMGGrillClimate(ClimateEntity):
     def max_temp(self):
         return 500
 
-    def set_temperature(self, **kwargs):
+    async def set_temperature(self, **kwargs):
         temp = kwargs.get(ATTR_TEMPERATURE)
         if temp:
             try:
-                self._grill.set_temp(int(temp))
+                await self._grill.set_temp(int(temp))  # Use await since set_temp is now async
                 _LOGGER.debug("Set grill temp to %s", temp)
             except Exception as e:
                 _LOGGER.error("Failed to set temp: %s", e)
 
-    def update(self):
+    async def update(self):
         try:
-            self._state = self._grill.status()
+            self._state = await self._grill.status()  # Use await since status is now async
             _LOGGER.debug("Grill update: %s", self._state)
         except Exception as e:
             _LOGGER.error("Update failed: %s", e)
