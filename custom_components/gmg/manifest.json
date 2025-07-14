@@ -1,10 +1,9 @@
 {
   "domain": "gmg",
-  "name": "GMG",
-  "version": "1.0.1",
+  "name": "GMG Grill",
+  "version": "1.0.0",
   "documentation": "https://github.com/phurth/gmg_ha_modernized",
-  "dependencies": [],
   "codeowners": ["@phurth"],
   "requirements": [],
-  "config_flow": false
+  "config_flow": true
 }
