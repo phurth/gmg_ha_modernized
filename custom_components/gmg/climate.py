@@ -2,13 +2,14 @@ import logging
 from typing import List
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
 from homeassistant.const import UnitOfTemperature, ATTR_TEMPERATURE
+from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 from .gmg import grill as GMGGrillObject
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
     """Set up the GMG climate platform."""
     host = config_entry.data["host"]
     gmg = GMGGrillObject(hass, host)
@@ -28,13 +29,9 @@ class GMGGrillClimate(ClimateEntity):
         self._state = {}
         self._attr_name = self._grill._serial_number
         self._attr_unique_id = self._grill._serial_number
-        self._attr_should_poll = False  # Disable polling to avoid synchronous calls
+        self._attr_should_poll = True  # Enable polling
+        self._attr_update_interval = 30  # Update every 30 seconds
         _LOGGER.debug("Initializing GMGGrillClimate for %s", self._attr_unique_id)
-
-    async def async_added_to_hass(self):
-        """Run when entity is added to Home Assistant."""
-        _LOGGER.debug("GMGGrillClimate added to hass for %s", self._attr_unique_id)
-        await self.async_update()
 
     @property
     def supported_features(self):
@@ -80,14 +77,15 @@ class GMGGrillClimate(ClimateEntity):
             try:
                 await self._grill.set_temp(int(temp))
                 _LOGGER.debug("Set grill temp to %s for %s", temp, self._attr_unique_id)
-                await self.async_update()  # Update state after setting temperature
+                await self.async_update()
             except Exception as e:
                 _LOGGER.error("Failed to set temp for %s: %s", self._attr_unique_id, e)
 
     async def async_update(self):
-        _LOGGER.debug("Updating GMGGrillClimate for %s", self._attr_unique_id)
+        _LOGGER.debug("Updating GMGGrillClimate for %s at %s", self._attr_unique_id, self._grill._ip)
         try:
             self._state = await self._grill.status()
             _LOGGER.debug("Grill update for %s: %s", self._attr_unique_id, self._state)
         except Exception as e:
             _LOGGER.error("Update failed for %s: %s", self._attr_unique_id, e)
+            self._state = {'on': 0, 'temp': None, 'grill_set_temp': None}
