@@ -8,7 +8,7 @@ _LOGGER = logging.getLogger(__name__)
 
 def grills(hass, timeout=1, ip_bind_address='0.0.0.0'):
     """Discover GMG grills on the network."""
-    _LOGGER.debug("Opening up UDP sockets and broadcasting for grills.")
+    _LOGGER.debug("Opening UDP sockets and broadcasting for grills.")
 
     interfaces = socket.getaddrinfo(host=socket.gethostname(), port=None, family=socket.AF_INET)
     allips = [ip[-1][0] for ip in interfaces]
@@ -25,7 +25,6 @@ def grills(hass, timeout=1, ip_bind_address='0.0.0.0'):
             sock.bind((ip, 0))
             sock.settimeout(timeout)
 
-            # Run blocking socket operations in executor
             def send_broadcast():
                 sock.sendto(message, ('<broadcast>', grill.UDP_PORT))
                 _LOGGER.debug("Broadcast sent.")
@@ -99,9 +98,10 @@ class grill:
             self.state['fireState'] = value_list[32]
             self.state['fireStatePercentage'] = value_list[33]
             self.state['warnState'] = value_list[24]
+            _LOGGER.debug(f"Parsed status response: {self.state}")
         except Exception as e:
-            _LOGGER.error(f"Error processing status: {e}")
-        _LOGGER.debug(f"Status response: {self.state}")
+            _LOGGER.error(f"Error processing status response: {e}")
+            self.state = {}
         return self.state
 
     async def set_temp(self, target_temp):
@@ -140,34 +140,44 @@ class grill:
 
     async def status(self):
         """Get status of grill."""
+        _LOGGER.debug("Requesting status from grill at %s", self._ip)
         status = None
         count = 0
         while status is None and count < 5:
             status = await self.send(self.CODE_STATUS)
             count += 1
+            _LOGGER.debug("Status attempt %d: %s", count, status)
         if status is None:
+            _LOGGER.error("No response from grill at %s after %d attempts", self._ip, count)
             raise RuntimeError("No response from grill")
         return await self.gmg_status_response(list(status))
 
     async def serial(self):
         """Get serial number of grill."""
-        self._serial_number = (await self.send(self.CODE_SERIAL)).decode('utf-8')
+        serial = await self.send(self.CODE_SERIAL)
+        if serial:
+            self._serial_number = serial.decode('utf-8')
+            _LOGGER.debug("Received serial number: %s", self._serial_number)
+        else:
+            _LOGGER.error("No serial number response from grill at %s", self._ip)
         return self._serial_number
 
     async def send(self, message, timeout=1):
         """Send messages via UDP to grill asynchronously."""
+        _LOGGER.debug("Sending message to %s:%d: %s", self._ip, self.UDP_PORT, message)
         def send_blocking():
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             try:
                 sock.settimeout(timeout)
                 sock.sendto(message, (self._ip, self.UDP_PORT))
-                data, _ = sock.recvfrom(1024)
+                data, addr = sock.recvfrom(1024)
+                _LOGGER.debug("Received response from %s: %s", addr, data)
                 return data
             except socket.timeout:
-                _LOGGER.debug("Socket timeout")
+                _LOGGER.debug("Socket timeout for %s:%d", self._ip, self.UDP_PORT)
                 return None
             except Exception as e:
-                _LOGGER.error(f"Error sending message: {e}")
+                _LOGGER.error("Error sending message to %s:%d: %s", self._ip, self.UDP_PORT, e)
                 return None
             finally:
                 sock.close()
