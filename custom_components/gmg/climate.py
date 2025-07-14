@@ -1,11 +1,7 @@
 import logging
 from typing import List
-from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import (
-    HVAC_MODE_OFF,
-    HVAC_MODE_HEAT,
-    SUPPORT_TARGET_TEMPERATURE,
-)
+from homeassistant.components.climate import ClimateEntity, HVACMode
+from homeassistant.components.climate.const import SUPPORT_TARGET_TEMPERATURE
 from homeassistant.const import TEMP_FAHRENHEIT, ATTR_TEMPERATURE
 
 from .const import DOMAIN
@@ -15,10 +11,10 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     host = config_entry.data["host"]
-    gmg = GMGGrillObject(hass, host)  # Pass hass to the constructor
+    gmg = GMGGrillObject(hass, host)
 
     try:
-        state = await gmg.status()  # Use await since status is now async
+        state = await gmg.status()
         _LOGGER.info("Connected to GMG grill at %s: %s", host, state)
     except Exception as e:
         _LOGGER.error("Failed to connect to GMG grill at %s: %s", host, e)
@@ -53,11 +49,11 @@ class GMGGrillClimate(ClimateEntity):
 
     @property
     def hvac_mode(self):
-        return HVAC_MODE_HEAT if self._state.get("on") else HVAC_MODE_OFF
+        return HVACMode.HEAT if self._state.get("on") else HVACMode.OFF
 
     @property
     def hvac_modes(self) -> List[str]:
-        return [HVAC_MODE_HEAT, HVAC_MODE_OFF]
+        return [HVACMode.HEAT, HVACMode.OFF]
 
     @property
     def min_temp(self):
@@ -71,14 +67,14 @@ class GMGGrillClimate(ClimateEntity):
         temp = kwargs.get(ATTR_TEMPERATURE)
         if temp:
             try:
-                await self._grill.set_temp(int(temp))  # Use await since set_temp is now async
+                await self._grill.set_temp(int(temp))
                 _LOGGER.debug("Set grill temp to %s", temp)
             except Exception as e:
                 _LOGGER.error("Failed to set temp: %s", e)
 
     async def update(self):
         try:
-            self._state = await self._grill.status()  # Use await since status is now async
+            self._state = await self._grill.status()
             _LOGGER.debug("Grill update: %s", self._state)
         except Exception as e:
             _LOGGER.error("Update failed: %s", e)
