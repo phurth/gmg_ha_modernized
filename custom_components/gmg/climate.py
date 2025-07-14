@@ -1,9 +1,5 @@
-"""Green Mountain Grill - Home Assistant Climate Integration."""
-
 import logging
 from typing import List
-from .gmg import grill as GMGGrillObject
-
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     HVAC_MODE_OFF,
@@ -12,43 +8,33 @@ from homeassistant.components.climate.const import (
 )
 from homeassistant.const import TEMP_FAHRENHEIT, ATTR_TEMPERATURE
 
+from .const import DOMAIN
+from .gmg import grill as GMGGrillObject
+
 _LOGGER = logging.getLogger(__name__)
 
-
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up GMG grill climate platform via legacy setup."""
-    _LOGGER.warning("Setting up GMG grill climate platform...")
-
-    ip = "192.168.1.190"  # 🔧 Replace with your actual grill IP
-    gmg = GMGGrillObject(ip)
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    host = config_entry.data["host"]
+    gmg = GMGGrillObject(host)
 
     try:
-        _LOGGER.warning("Attempting initial connection to GMG grill at %s", ip)
-        status = gmg.status()
-        _LOGGER.warning("Initial status from grill: %s", status)
+        state = gmg.status()
+        _LOGGER.info("Connected to GMG grill at %s: %s", host, state)
     except Exception as e:
-        _LOGGER.error("Failed to reach GMG grill at %s: %s", ip, e)
+        _LOGGER.error("Failed to connect to GMG grill at %s: %s", host, e)
         return
 
-    entities = [GMGGrillClimate(gmg)]
-    async_add_entities(entities)
+    async_add_entities([GMGGrillClimate(gmg)])
 
 
 class GMGGrillClimate(ClimateEntity):
-    """A basic GMG grill climate entity."""
-
     def __init__(self, grill):
-        _LOGGER.warning("GMGGrillClimate __init__ called")
         self._grill = grill
         self._state = {}
         self._attr_name = self._grill._serial_number
         self._attr_unique_id = self._grill._serial_number
-
+        self._attr_should_poll = True
         self.update()
-
-    @property
-    def should_poll(self) -> bool:
-        return True
 
     @property
     def supported_features(self):
@@ -84,18 +70,16 @@ class GMGGrillClimate(ClimateEntity):
 
     def set_temperature(self, **kwargs):
         temp = kwargs.get(ATTR_TEMPERATURE)
-        _LOGGER.warning("Set temp requested: %s", temp)
         if temp:
             try:
                 self._grill.set_temp(int(temp))
-                _LOGGER.warning("Set temp to %s", temp)
+                _LOGGER.debug("Set grill temp to %s", temp)
             except Exception as e:
                 _LOGGER.error("Failed to set temp: %s", e)
 
     def update(self):
-        _LOGGER.warning("GMGGrillClimate.update() called")
         try:
             self._state = self._grill.status()
-            _LOGGER.warning("Updated state: %s", self._state)
+            _LOGGER.debug("Grill update: %s", self._state)
         except Exception as e:
             _LOGGER.error("Update failed: %s", e)
