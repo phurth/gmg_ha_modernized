@@ -278,8 +278,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up climate platform from config entry."""
     from homeassistant.helpers.typing import DiscoveryInfoType
 
-    # Fallback config if needed
-    config = config_entry.data or {}
+    config = {
+        "host": "192.168.1.190",  # <- hardcode your grill IP
+        "grill_name": "GMG12301304",
+    }
 
     await hass.async_add_executor_job(
         setup_platform, hass, config, async_add_entities, DiscoveryInfoType
