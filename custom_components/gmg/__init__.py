@@ -2,7 +2,6 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from . import climate
 from .const import DOMAIN
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -11,6 +10,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up GMG from a config entry."""
+    from . import climate  # Import climate module here to avoid blocking during init
     await climate.async_setup_entry(hass, entry, hass.helpers.entity_platform.async_add_entities)
     return True
 
