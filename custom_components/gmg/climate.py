@@ -2,7 +2,7 @@
 
 import logging
 from typing import List
-from .gmg.grill import grill as GMGGrillObject
+from .gmg import grill as GMGGrillObject
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
