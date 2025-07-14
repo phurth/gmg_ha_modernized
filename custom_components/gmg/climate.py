@@ -28,8 +28,13 @@ class GMGGrillClimate(ClimateEntity):
         self._state = {}
         self._attr_name = self._grill._serial_number
         self._attr_unique_id = self._grill._serial_number
-        self._attr_should_poll = True
+        self._attr_should_poll = False  # Disable polling to avoid synchronous calls
         _LOGGER.debug("Initializing GMGGrillClimate for %s", self._attr_unique_id)
+
+    async def async_added_to_hass(self):
+        """Run when entity is added to Home Assistant."""
+        _LOGGER.debug("GMGGrillClimate added to hass for %s", self._attr_unique_id)
+        await self.async_update()
 
     @property
     def supported_features(self):
@@ -41,15 +46,21 @@ class GMGGrillClimate(ClimateEntity):
 
     @property
     def current_temperature(self):
-        return self._state.get("temp")
+        value = self._state.get("temp")
+        _LOGGER.debug("Accessing current_temperature for %s: %s", self._attr_unique_id, value)
+        return value
 
     @property
     def target_temperature(self):
-        return self._state.get("grill_set_temp")
+        value = self._state.get("grill_set_temp")
+        _LOGGER.debug("Accessing target_temperature for %s: %s", self._attr_unique_id, value)
+        return value
 
     @property
     def hvac_mode(self):
-        return HVACMode.HEAT if self._state.get("on") else HVACMode.OFF
+        state = HVACMode.HEAT if self._state.get("on") else HVACMode.OFF
+        _LOGGER.debug("Accessing hvac_mode for %s: %s (on: %s)", self._attr_unique_id, state, self._state.get("on"))
+        return state
 
     @property
     def hvac_modes(self) -> List[str]:
@@ -69,10 +80,11 @@ class GMGGrillClimate(ClimateEntity):
             try:
                 await self._grill.set_temp(int(temp))
                 _LOGGER.debug("Set grill temp to %s for %s", temp, self._attr_unique_id)
+                await self.async_update()  # Update state after setting temperature
             except Exception as e:
                 _LOGGER.error("Failed to set temp for %s: %s", self._attr_unique_id, e)
 
-    async def update(self):
+    async def async_update(self):
         _LOGGER.debug("Updating GMGGrillClimate for %s", self._attr_unique_id)
         try:
             self._state = await self._grill.status()
