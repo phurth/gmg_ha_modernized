@@ -1,9 +1,17 @@
-from homeassistant import core
+"""GMG integration."""
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 DOMAIN = "gmg"
 
-async def async_setup(hass: core.HomeAssistant, config: dict) -> bool:
-    """Set up the Green Mountain Grill component."""
-    # @TODO: Add setup code.
-    
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up GMG from a config entry."""
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "climate")
+    )
     return True
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload GMG config entry."""
+    return await hass.config_entries.async_forward_entry_unload(entry, "climate")
