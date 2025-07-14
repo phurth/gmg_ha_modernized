@@ -9,6 +9,7 @@ from .gmg import grill as GMGGrillObject
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up the GMG climate platform."""
     host = config_entry.data["host"]
     gmg = GMGGrillObject(hass, host)
 
