@@ -2,8 +2,12 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from . import climate
 from .const import DOMAIN
-from . import climate  # Import the climate module directly
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the GMG integration."""
+    return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up GMG from a config entry."""
@@ -12,8 +16,4 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload GMG config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, [climate.PLATFORM])
-
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the GMG integration."""
-    return True
+    return await hass.config_entries.async_unload_platforms(entry, ["climate"])
