@@ -36,12 +36,14 @@ class GMGProbeSensor(SensorEntity):
         self._attr_native_unit_of_measurement = UnitOfTemperature.FAHRENHEIT
         self._attr_should_poll = True
         self._state = {}
+        _LOGGER.debug("Initializing GMGProbeSensor for %s", self._attr_unique_id)
 
     @property
     def native_value(self):
         return self._state.get(self._state_key)
 
     async def update(self):
+        _LOGGER.debug("Updating GMGProbeSensor for %s", self._attr_unique_id)
         try:
             self._state = await self._grill.status()
             _LOGGER.debug("Sensor update for %s: %s", self._state_key, self._state)
