@@ -29,7 +29,7 @@ class GMGGrillClimate(ClimateEntity):
         self._attr_name = self._grill._serial_number
         self._attr_unique_id = self._grill._serial_number
         self._attr_should_poll = True
-        # Removed self.update() to avoid calling async method synchronously
+        _LOGGER.debug("Initializing GMGGrillClimate for %s", self._attr_unique_id)
 
     @property
     def supported_features(self):
@@ -68,13 +68,14 @@ class GMGGrillClimate(ClimateEntity):
         if temp:
             try:
                 await self._grill.set_temp(int(temp))
-                _LOGGER.debug("Set grill temp to %s", temp)
+                _LOGGER.debug("Set grill temp to %s for %s", temp, self._attr_unique_id)
             except Exception as e:
-                _LOGGER.error("Failed to set temp: %s", e)
+                _LOGGER.error("Failed to set temp for %s: %s", self._attr_unique_id, e)
 
     async def update(self):
+        _LOGGER.debug("Updating GMGGrillClimate for %s", self._attr_unique_id)
         try:
             self._state = await self._grill.status()
-            _LOGGER.debug("Grill update: %s", self._state)
+            _LOGGER.debug("Grill update for %s: %s", self._attr_unique_id, self._state)
         except Exception as e:
-            _LOGGER.error("Update failed: %s", e)
+            _LOGGER.error("Update failed for %s: %s", self._attr_unique_id, e)
