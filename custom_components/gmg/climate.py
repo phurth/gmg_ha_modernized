@@ -274,3 +274,13 @@ class GmgGrillProbe(ClimateEntity):
         self._state = self._grill.status()
 
         #_LOGGER.debug(f"State: {self._state}")
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up climate platform from config entry."""
+    from homeassistant.helpers.typing import DiscoveryInfoType
+
+    # Fallback config if needed
+    config = config_entry.data or {}
+
+    await hass.async_add_executor_job(
+        setup_platform, hass, config, async_add_entities, DiscoveryInfoType
+    )
