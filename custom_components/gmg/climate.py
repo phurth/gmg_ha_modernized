@@ -1,7 +1,6 @@
 import logging
 from typing import List
-from homeassistant.components.climate import ClimateEntity, HVACMode
-from homeassistant.components.climate.const import SUPPORT_TARGET_TEMPERATURE
+from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
 from homeassistant.const import TEMP_FAHRENHEIT, ATTR_TEMPERATURE
 
 from .const import DOMAIN
@@ -33,7 +32,7 @@ class GMGGrillClimate(ClimateEntity):
 
     @property
     def supported_features(self):
-        return SUPPORT_TARGET_TEMPERATURE
+        return ClimateEntityFeature.TARGET_TEMPERATURE
 
     @property
     def temperature_unit(self):
