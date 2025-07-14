@@ -9,7 +9,6 @@ _LOGGER = logging.getLogger(__name__)
 def grills(hass, timeout=1, ip_bind_address='0.0.0.0'):
     """Discover GMG grills on the network."""
     _LOGGER.debug("Opening UDP sockets and broadcasting for grills.")
-
     interfaces = socket.getaddrinfo(host=socket.gethostname(), port=None, family=socket.AF_INET)
     allips = [ip[-1][0] for ip in interfaces]
     allips.append(ip_bind_address)
@@ -27,7 +26,7 @@ def grills(hass, timeout=1, ip_bind_address='0.0.0.0'):
 
             def send_broadcast():
                 sock.sendto(message, ('<broadcast>', grill.UDP_PORT))
-                _LOGGER.debug("Broadcast sent.")
+                _LOGGER.debug("Broadcast sent on %s", ip)
                 responses = []
                 while True:
                     try:
@@ -41,13 +40,13 @@ def grills(hass, timeout=1, ip_bind_address='0.0.0.0'):
             responses = hass.loop.run_in_executor(None, send_broadcast)
 
             for response, address, ret_socket in responses:
-                _LOGGER.debug(f"Received a response {address}:{ret_socket}, {response}")
+                _LOGGER.debug(f"Received discovery response from {address}:{ret_socket}: {response}")
                 add_grill = True
                 if response.startswith('GMG'):
-                    _LOGGER.debug(f"Found grill {address}:{ret_socket}, {response}")
+                    _LOGGER.debug(f"Found grill {address}:{ret_socket}, serial: {response}")
                     for grill_test in grills:
                         if grill_test._serial_number == response:
-                            _LOGGER.debug(f"Grill {response} is a duplicate. Not adding to collection.")
+                            _LOGGER.debug(f"Grill {response} is a duplicate. Not adding.")
                             add_grill = False
                     if add_grill:
                         grills.append(grill(hass, address, response))
@@ -80,24 +79,26 @@ class grill:
 
     async def gmg_status_response(self, value_list):
         """Process status response from grill."""
-        _LOGGER.debug(f"Status response raw: {value_list}")
+        _LOGGER.debug(f"Raw status response: {value_list}, length: {len(value_list)}, hex: {binascii.hexlify(bytearray(value_list))}")
         try:
-            self.state['on'] = value_list[30]
-            self.state['temp'] = value_list[2]
-            self.state['temp_high'] = value_list[3]
-            self.state['grill_set_temp'] = value_list[6]
-            self.state['grill_set_temp_high'] = value_list[7]
-            self.state['probe1_temp'] = value_list[4]
-            self.state['probe1_temp_high'] = value_list[5]
-            self.state['probe1_set_temp'] = value_list[28]
-            self.state['probe1_set_temp_high'] = value_list[29]
-            self.state['probe2_temp'] = value_list[16]
-            self.state['probe2_temp_high'] = value_list[17]
-            self.state['probe2_set_temp'] = value_list[18]
-            self.state['probe2_set_temp_high'] = value_list[19]
-            self.state['fireState'] = value_list[32]
-            self.state['fireStatePercentage'] = value_list[33]
-            self.state['warnState'] = value_list[24]
+            self.state = {
+                'on': value_list[30] if len(value_list) > 30 else None,
+                'temp': value_list[2] if len(value_list) > 2 else None,
+                'temp_high': value_list[3] if len(value_list) > 3 else None,
+                'grill_set_temp': value_list[6] if len(value_list) > 6 else None,
+                'grill_set_temp_high': value_list[7] if len(value_list) > 7 else None,
+                'probe1_temp': value_list[4] if len(value_list) > 4 else None,
+                'probe1_temp_high': value_list[5] if len(value_list) > 5 else None,
+                'probe1_set_temp': value_list[28] if len(value_list) > 28 else None,
+                'probe1_set_temp_high': value_list[29] if len(value_list) > 29 else None,
+                'probe2_temp': value_list[16] if len(value_list) > 16 else None,
+                'probe2_temp_high': value_list[17] if len(value_list) > 17 else None,
+                'probe2_set_temp': value_list[18] if len(value_list) > 18 else None,
+                'probe2_set_temp_high': value_list[19] if len(value_list) > 19 else None,
+                'fireState': value_list[32] if len(value_list) > 32 else None,
+                'fireStatePercentage': value_list[33] if len(value_list) > 33 else None,
+                'warnState': value_list[24] if len(value_list) > 24 else None
+            }
             _LOGGER.debug(f"Parsed status response: {self.state}")
         except Exception as e:
             _LOGGER.error(f"Error processing status response: {e}")
@@ -146,11 +147,17 @@ class grill:
         while status is None and count < 5:
             status = await self.send(self.CODE_STATUS)
             count += 1
-            _LOGGER.debug("Status attempt %d: %s", count, status)
+            _LOGGER.debug("Status attempt %d: %s (hex: %s)", count, status, binascii.hexlify(status) if status else None)
         if status is None:
             _LOGGER.error("No response from grill at %s after %d attempts", self._ip, count)
             raise RuntimeError("No response from grill")
-        return await self.gmg_status_response(list(status))
+        _LOGGER.debug("Raw status data before parsing: %s", status)
+        try:
+            value_list = list(status)
+            return await self.gmg_status_response(value_list)
+        except Exception as e:
+            _LOGGER.error("Error parsing status data: %s", e)
+            return {}
 
     async def serial(self):
         """Get serial number of grill."""
@@ -162,7 +169,7 @@ class grill:
             _LOGGER.error("No serial number response from grill at %s", self._ip)
         return self._serial_number
 
-    async def send(self, message, timeout=1):
+    async def send(self, message, timeout=3):
         """Send messages via UDP to grill asynchronously."""
         _LOGGER.debug("Sending message to %s:%d: %s", self._ip, self.UDP_PORT, message)
         def send_blocking():
@@ -171,7 +178,7 @@ class grill:
                 sock.settimeout(timeout)
                 sock.sendto(message, (self._ip, self.UDP_PORT))
                 data, addr = sock.recvfrom(1024)
-                _LOGGER.debug("Received response from %s: %s", addr, data)
+                _LOGGER.debug("Received response from %s: %s (hex: %s)", addr, data, binascii.hexlify(data))
                 return data
             except socket.timeout:
                 _LOGGER.debug("Socket timeout for %s:%d", self._ip, self.UDP_PORT)
