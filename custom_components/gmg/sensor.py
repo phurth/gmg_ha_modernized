@@ -38,11 +38,16 @@ class GMGProbeSensor(SensorEntity):
         self._state = {}
         _LOGGER.debug("Initializing GMGProbeSensor for %s", self._attr_unique_id)
 
+    async def async_added_to_hass(self):
+        """Run when entity is added to Home Assistant."""
+        _LOGGER.debug("GMGProbeSensor added to hass for %s", self._attr_unique_id)
+        await self.async_update()
+
     @property
     def native_value(self):
         return self._state.get(self._state_key)
 
-    async def update(self):
+    async def async_update(self):
         _LOGGER.debug("Updating GMGProbeSensor for %s", self._attr_unique_id)
         try:
             self._state = await self._grill.status()
