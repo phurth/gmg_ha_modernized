@@ -15,11 +15,11 @@ from homeassistant.const import TEMP_FAHRENHEIT, ATTR_TEMPERATURE
 _LOGGER = logging.getLogger(__name__)
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up GMG grill platform."""
-    _LOGGER.warning("Setting up GMG grill platform...")
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up GMG grill climate platform via legacy setup."""
+    _LOGGER.warning("Setting up GMG grill climate platform...")
 
-    ip = config.get("host")
+    ip = "192.168.1.190"  # 🔧 Replace with your actual grill IP
     gmg = GMGGrillObject(ip)
 
     try:
@@ -31,7 +31,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         return
 
     entities = [GMGGrillClimate(gmg)]
-    add_entities(entities)
+    async_add_entities(entities)
 
 
 class GMGGrillClimate(ClimateEntity):
@@ -99,14 +99,3 @@ class GMGGrillClimate(ClimateEntity):
             _LOGGER.warning("Updated state: %s", self._state)
         except Exception as e:
             _LOGGER.error("Update failed: %s", e)
-
-
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up climate platform from config entry."""
-    config = {
-        "host": "192.168.1.190",  # 🔧 Replace with your grill's IP
-    }
-
-    await hass.async_add_executor_job(
-        setup_platform, hass, config, async_add_entities
-    )
