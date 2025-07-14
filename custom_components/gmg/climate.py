@@ -29,7 +29,7 @@ class GMGGrillClimate(ClimateEntity):
         self._attr_name = self._grill._serial_number
         self._attr_unique_id = self._grill._serial_number
         self._attr_should_poll = True
-        self.update()
+        # Removed self.update() to avoid calling async method synchronously
 
     @property
     def supported_features(self):
