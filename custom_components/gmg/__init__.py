@@ -10,8 +10,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up GMG from a config entry."""
-    from . import climate
-    await climate.async_setup_entry(hass, entry)
+    await hass.config_entries.async_forward_entry_setups(entry, ["climate"])
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
