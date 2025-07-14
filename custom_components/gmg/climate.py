@@ -1,7 +1,7 @@
 import logging
 from typing import List
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
-from homeassistant.const import TEMP_FAHRENHEIT, ATTR_TEMPERATURE
+from homeassistant.const import UnitOfTemperature, ATTR_TEMPERATURE
 
 from .const import DOMAIN
 from .gmg import grill as GMGGrillObject
@@ -36,7 +36,7 @@ class GMGGrillClimate(ClimateEntity):
 
     @property
     def temperature_unit(self):
-        return TEMP_FAHRENHEIT
+        return UnitOfTemperature.FAHRENHEIT
 
     @property
     def current_temperature(self):
