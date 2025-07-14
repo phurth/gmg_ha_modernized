@@ -85,9 +85,11 @@ class GmgGrill(ClimateEntity):
         return self._grill.power_off()
 
     def update(self) -> None:
+        _LOGGER.warning("GmgGrill.update() called")
+    
         try:
             self._state = self._grill.status()
-            _LOGGER.debug("Grill state: %s", self._state)
+            _LOGGER.warning("Grill state: %s", self._state)
         except Exception as e:
             _LOGGER.error("Failed to update grill state: %s", e)
 
@@ -166,11 +168,14 @@ class GmgGrillProbe(ClimateEntity):
             _LOGGER.error("Error setting probe temperature: %s", e)
 
     def update(self) -> None:
+        _LOGGER.warning("GmgGrillProbe.update() called (probe %s)", self._probe_count)
+    
         try:
             self._state = self._grill.status()
-            _LOGGER.debug("Probe %s state: %s", self._probe_count, self._state)
+            _LOGGER.warning("Probe %s state: %s", self._probe_count, self._state)
         except Exception as e:
             _LOGGER.error("Failed to update probe state: %s", e)
+
 
     @property
     def hvac_modes(self) -> List[str]:
