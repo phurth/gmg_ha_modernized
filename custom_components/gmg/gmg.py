@@ -108,21 +108,21 @@ class grill:
                 # Parse as binary response
                 self.state = {
                     'on': value_list[3] if len(value_list) > 3 else 0,  # Byte 3: 0x00 (off)
-                    'temp': int.from_bytes(value_list[4:6], 'big') if len(value_list) > 5 else None,  # Bytes 4-5: 0x008e
-                    'temp_high': int.from_bytes(value_list[6:8], 'big') if len(value_list) > 7 else None,  # Bytes 6-7: 0x0396
-                    'grill_set_temp': int.from_bytes(value_list[8:10], 'big') if len(value_list) > 9 else None,  # Bytes 8-9: 0x0609
-                    'grill_set_temp_high': int.from_bytes(value_list[10:12], 'big') if len(value_list) > 11 else None,  # Bytes 10-11: 0x1412
-                    'probe1_temp': int.from_bytes(value_list[12:14], 'big') if len(value_list) > 13 else None,  # Bytes 12-13: 0x3131
-                    'probe1_temp_high': int.from_bytes(value_list[14:16], 'big') if len(value_list) > 15 else None,  # Bytes 14-15: 0x3131
-                    'probe1_set_temp': int.from_bytes(value_list[16:18], 'big') if len(value_list) > 17 else None,  # Bytes 16-17: 0x0000
-                    'probe1_set_temp_high': int.from_bytes(value_list[18:20], 'big') if len(value_list) > 19 else None,  # Bytes 18-19: 0x0000
-                    'probe2_temp': int.from_bytes(value_list[20:22], 'big') if len(value_list) > 21 else None,  # Bytes 20-21: 0xffff
-                    'probe2_temp_high': int.from_bytes(value_list[22:24], 'big') if len(value_list) > 23 else None,  # Bytes 22-23: 0xffff
-                    'probe2_set_temp': int.from_bytes(value_list[24:26], 'big') if len(value_list) > 25 else None,  # Bytes 24-25: 0x0000
-                    'probe2_set_temp_high': int.from_bytes(value_list[26:28], 'big') if len(value_list) > 27 else None,  # Bytes 26-27: 0x0000
-                    'fireState': value_list[28] if len(value_list) > 28 else None,  # Byte 28: 0x00
-                    'fireStatePercentage': value_list[29] if len(value_list) > 29 else None,  # Byte 29: 0x00
-                    'warnState': value_list[30] if len(value_list) > 30 else None  # Byte 30: 0x00
+                    'temp': int.from_bytes(value_list[10:12], 'big') if len(value_list) > 11 else None,  # Bytes 10-11
+                    'temp_high': int.from_bytes(value_list[12:14], 'big') if len(value_list) > 13 else None,  # Bytes 12-13
+                    'grill_set_temp': int.from_bytes(value_list[16:18], 'big') if len(value_list) > 17 else None,  # Bytes 16-17
+                    'grill_set_temp_high': int.from_bytes(value_list[18:20], 'big') if len(value_list) > 19 else None,  # Bytes 18-19
+                    'probe1_temp': int.from_bytes(value_list[20:22], 'big') if len(value_list) > 21 else None,  # Bytes 20-21
+                    'probe1_temp_high': int.from_bytes(value_list[22:24], 'big') if len(value_list) > 23 else None,  # Bytes 22-23
+                    'probe1_set_temp': int.from_bytes(value_list[24:26], 'big') if len(value_list) > 25 else None,  # Bytes 24-25
+                    'probe1_set_temp_high': int.from_bytes(value_list[26:28], 'big') if len(value_list) > 27 else None,  # Bytes 26-27
+                    'probe2_temp': int.from_bytes(value_list[28:30], 'big') if len(value_list) > 29 else None,  # Bytes 28-29
+                    'probe2_temp_high': int.from_bytes(value_list[30:32], 'big') if len(value_list) > 31 else None,  # Bytes 30-31
+                    'probe2_set_temp': int.from_bytes(value_list[32:34], 'big') if len(value_list) > 33 else None,  # Bytes 32-33
+                    'probe2_set_temp_high': int.from_bytes(value_list[34:36], 'big') if len(value_list) > 35 else None,  # Bytes 34-35
+                    'fireState': value_list[36] if len(value_list) > 36 else None,  # Byte 36
+                    'fireStatePercentage': value_list[37] if len(value_list) > 37 else None,  # Byte 37
+                    'warnState': value_list[38] if len(value_list) > 38 else None  # Byte 38
                 }
                 # Validate temperatures
                 for key in ['temp', 'grill_set_temp', 'probe1_temp', 'probe2_temp']:
@@ -132,6 +132,9 @@ class grill:
                             self.state[key] = None
                         elif key in ['probe1_temp', 'probe2_temp'] and self.state[key] < self.MIN_TEMP_F_PROBE:
                             _LOGGER.debug(f"Probe {key} unplugged or ambient: {self.state[key]}, setting to None")
+                            self.state[key] = None
+                        elif key == 'temp' and not self.state['on'] and self.state[key] > 100:
+                            _LOGGER.debug(f"Grill off, invalid temp {self.state[key]}, setting to None")
                             self.state[key] = None
             _LOGGER.debug(f"Parsed status response: {self.state}")
         except Exception as e:
@@ -178,7 +181,7 @@ class grill:
         _LOGGER.debug("Requesting status from grill at %s", self._ip)
         status = None
         count = 0
-        while status is None and count < 5:
+        while status is None and count < 10:
             status = await self.send(self.CODE_STATUS)
             count += 1
             _LOGGER.debug("Status attempt %d: %s (hex: %s)", count, status, binascii.hexlify(status) if status else None)
