@@ -110,19 +110,19 @@ class grill:
                     'on': value_list[3] if len(value_list) > 3 else 0,  # Byte 3: 0x00 (off)
                     'temp': int.from_bytes(value_list[16:18], 'big') if len(value_list) > 17 else None,  # Bytes 16-17: 0x0000
                     'temp_high': int.from_bytes(value_list[18:20], 'big') if len(value_list) > 19 else None,  # Bytes 18-19: 0x0000
-                    'grill_set_temp': int.from_bytes(value_list[20:22], 'big') if len(value_list) > 21 else None,  # Bytes 20-21: 0xffff
-                    'grill_set_temp_high': int.from_bytes(value_list[22:24], 'big') if len(value_list) > 23 else None,  # Bytes 22-23: 0xffff
-                    'probe1_temp': int.from_bytes(value_list[24:26], 'big') if len(value_list) > 25 else None,  # Bytes 24-25: 0x0000
-                    'probe1_temp_high': int.from_bytes(value_list[26:28], 'big') if len(value_list) > 27 else None,  # Bytes 26-27: 0x0000
-                    'probe1_set_temp': int.from_bytes(value_list[28:30], 'big') if len(value_list) > 29 else None,  # Bytes 28-29: 0x0000
-                    'probe1_set_temp_high': int.from_bytes(value_list[30:32], 'big') if len(value_list) > 31 else None,  # Bytes 30-31: 0x0000
-                    'probe2_temp': int.from_bytes(value_list[32:34], 'big') if len(value_list) > 33 else None,  # Bytes 32-33: 0x0100
-                    'probe2_temp_high': int.from_bytes(value_list[34:36], 'big') if len(value_list) > 35 else None,  # Bytes 34-35: 0x0000
-                    'probe2_set_temp': int.from_bytes(value_list[36:38], 'big') if len(value_list) > 37 else None,  # Bytes 36-37: 0x0000
-                    'probe2_set_temp_high': int.from_bytes(value_list[38:40], 'big') if len(value_list) > 39 else None,  # Bytes 38-39: 0x0000
-                    'fireState': value_list[40] if len(value_list) > 40 else None,  # Byte 40: 0x00
-                    'fireStatePercentage': value_list[36] if len(value_list) > 36 else None,  # Byte 36: 0x00
-                    'warnState': value_list[37] if len(value_list) > 37 else None  # Byte 37: 0x00
+                    'grill_set_temp': int.from_bytes(value_list[24:26], 'big') if len(value_list) > 25 else None,  # Bytes 24-25: 0x0000
+                    'grill_set_temp_high': int.from_bytes(value_list[26:28], 'big') if len(value_list) > 27 else None,  # Bytes 26-27: 0x0000
+                    'probe1_temp': int.from_bytes(value_list[28:30], 'big') if len(value_list) > 29 else None,  # Bytes 28-29: 0x0000
+                    'probe1_temp_high': int.from_bytes(value_list[30:32], 'big') if len(value_list) > 31 else None,  # Bytes 30-31: 0x0000
+                    'probe1_set_temp': int.from_bytes(value_list[32:34], 'big') if len(value_list) > 33 else None,  # Bytes 32-33: 0x0100
+                    'probe1_set_temp_high': int.from_bytes(value_list[34:36], 'big') if len(value_list) > 35 else None,  # Bytes 34-35: 0x0000
+                    'probe2_temp': int.from_bytes(value_list[36:38], 'big') if len(value_list) > 37 else None,  # Bytes 36-37: 0x0000
+                    'probe2_temp_high': int.from_bytes(value_list[38:40], 'big') if len(value_list) > 39 else None,  # Bytes 38-39: 0x0000
+                    'probe2_set_temp': int.from_bytes(value_list[40:42], 'big') if len(value_list) > 41 else None,  # Bytes 40-41: 0x00 (past data)
+                    'probe2_set_temp_high': int.from_bytes(value_list[42:44], 'big') if len(value_list) > 43 else None,  # Bytes 42-43: start of DC02...
+                    'fireState': value_list[44] if len(value_list) > 44 else None,  # Byte 44: start of DC02...
+                    'fireStatePercentage': value_list[40] if len(value_list) > 40 else None,  # Byte 40: 0x00
+                    'warnState': value_list[41] if len(value_list) > 41 else None  # Byte 41: start of DC02...
                 }
                 # Validate temperatures
                 for key in ['temp', 'grill_set_temp', 'probe1_temp', 'probe2_temp']:
