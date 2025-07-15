@@ -81,44 +81,40 @@ class grill:
         """Process status response from grill."""
         _LOGGER.debug(f"Raw status response: {value_list}, length: {len(value_list)}, hex: {binascii.hexlify(bytearray(value_list))}")
         try:
-            # Try parsing as ASCII first (comma-separated)
-            ascii_response = ''.join(chr(x) for x in value_list if 32 <= x <= 126)
-            if ',' in ascii_response:
-                values = ascii_response.split(',')
-                self.state = {
-                    'on': int(values[29]) if len(values) > 29 else 0,
-                    'temp': int(values[0]) if len(values) > 0 and values[0].isdigit() else None,
-                    'temp_high': int(values[1]) if len(values) > 1 and values[1].isdigit() else None,
-                    'grill_set_temp': int(values[4]) if len(values) > 4 and values[4].isdigit() else None,
-                    'grill_set_temp_high': int(values[5]) if len(values) > 5 and values[5].isdigit() else None,
-                    'probe1_temp': int(values[2]) if len(values) > 2 and values[2].isdigit() else None,
-                    'probe2_temp': int(values[14]) if len(values) > 14 and values[14].isdigit() else None,
-                    'probe1_set_temp': int(values[27]) if len(values) > 27 and values[27].isdigit() else None,
-                    'probe2_set_temp': int(values[16]) if len(values) > 16 and values[16].isdigit() else None,
-                    'fireState': int(values[31]) if len(values) > 31 and values[31].isdigit() else None,
-                    'fireStatePercentage': int(values[32]) if len(values) > 32 and values[32].isdigit() else None,
-                    'warnState': int(values[23]) if len(values) > 23 and values[23].isdigit() else None
-                }
-            else:
-                # Fallback to binary parsing
-                self.state = {
-                    'on': int(value_list[29]) if len(value_list) > 29 else 0,
-                    'temp': int.from_bytes(value_list[0:2], 'big') if len(value_list) > 1 else None,
-                    'temp_high': int.from_bytes(value_list[2:4], 'big') if len(value_list) > 3 else None,
-                    'grill_set_temp': int.from_bytes(value_list[4:6], 'big') if len(value_list) > 5 else None,
-                    'grill_set_temp_high': int.from_bytes(value_list[6:8], 'big') if len(value_list) > 7 else None,
-                    'probe1_temp': int.from_bytes(value_list[2:4], 'big') if len(value_list) > 3 else None,
-                    'probe1_temp_high': int.from_bytes(value_list[4:6], 'big') if len(value_list) > 5 else None,
-                    'probe1_set_temp': int.from_bytes(value_list[27:29], 'big') if len(value_list) > 28 else None,
-                    'probe1_set_temp_high': int.from_bytes(value_list[29:31], 'big') if len(value_list) > 30 else None,
-                    'probe2_temp': int.from_bytes(value_list[14:16], 'big') if len(value_list) > 15 else None,
-                    'probe2_temp_high': int.from_bytes(value_list[16:18], 'big') if len(value_list) > 17 else None,
-                    'probe2_set_temp': int.from_bytes(value_list[18:20], 'big') if len(value_list) > 19 else None,
-                    'probe2_set_temp_high': int.from_bytes(value_list[20:22], 'big') if len(value_list) > 21 else None,
-                    'fireState': int(value_list[31]) if len(value_list) > 31 else None,
-                    'fireStatePercentage': int(value_list[32]) if len(value_list) > 32 else None,
-                    'warnState': int(value_list[23]) if len(value_list) > 23 else None
-                }
+            # Parse as comma-separated ASCII string (per jwhitby91/gmg_home_assistant)
+            ascii_response = value_list.decode('utf-8', errors='replace')
+            _LOGGER.debug(f"ASCII response: {ascii_response}")
+            if ',' not in ascii_response:
+                _LOGGER.error(f"Invalid response format, expected comma-separated: {ascii_response}")
+                raise ValueError("Response is not comma-separated")
+            values = ascii_response.split(',')
+            self.state = {
+                'on': int(values[30]) if len(values) > 30 and values[30].isdigit() else 0,
+                'temp': int(values[2]) if len(values) > 2 and values[2].isdigit() else None,
+                'temp_high': int(values[3]) if len(values) > 3 and values[3].isdigit() else None,
+                'grill_set_temp': int(values[6]) if len(values) > 6 and values[6].isdigit() else None,
+                'grill_set_temp_high': int(values[7]) if len(values) > 7 and values[7].isdigit() else None,
+                'probe1_temp': int(values[4]) if len(values) > 4 and values[4].isdigit() else None,
+                'probe1_temp_high': int(values[5]) if len(values) > 5 and values[5].isdigit() else None,
+                'probe1_set_temp': int(values[27]) if len(values) > 27 and values[27].isdigit() else None,
+                'probe1_set_temp_high': int(values[28]) if len(values) > 28 and values[28].isdigit() else None,
+                'probe2_temp': int(values[16]) if len(values) > 16 and values[16].isdigit() else None,
+                'probe2_temp_high': int(values[17]) if len(values) > 17 and values[17].isdigit() else None,
+                'probe2_set_temp': int(values[18]) if len(values) > 18 and values[18].isdigit() else None,
+                'probe2_set_temp_high': int(values[19]) if len(values) > 19 and values[19].isdigit() else None,
+                'fireState': int(values[31]) if len(values) > 31 and values[31].isdigit() else None,
+                'fireStatePercentage': int(values[32]) if len(values) > 32 and values[32].isdigit() else None,
+                'warnState': int(values[23]) if len(values) > 23 and values[23].isdigit() else None
+            }
+            # Validate temperatures
+            for key in ['temp', 'grill_set_temp', 'probe1_temp', 'probe2_temp']:
+                if self.state[key] is not None:
+                    if self.state[key] < 0 or self.state[key] > 1000:
+                        _LOGGER.warning(f"Invalid {key}: {self.state[key]}, setting to None")
+                        self.state[key] = None
+                    elif key in ['probe1_temp', 'probe2_temp'] and self.state[key] < self.MIN_TEMP_F_PROBE:
+                        _LOGGER.debug(f"Probe {key} unplugged or ambient: {self.state[key]}, setting to None")
+                        self.state[key] = None
             _LOGGER.debug(f"Parsed status response: {self.state}")
         except Exception as e:
             _LOGGER.error(f"Error processing status response: {e}, raw data: {value_list}")
@@ -173,10 +169,9 @@ class grill:
             raise RuntimeError("No response from grill")
         _LOGGER.debug("Raw status data before parsing: %s", status)
         try:
-            value_list = list(status)
-            return await self.gmg_status_response(value_list)
+            return await self.gmg_status_response(status)
         except Exception as e:
-            _LOGGER.error("Error parsing status data: %s", e)
+            _LOGGER.error(f"Error parsing status data: {e}")
             return {'on': 0, 'temp': None, 'grill_set_temp': None, 'probe1_temp': None, 'probe2_temp': None}
 
     async def serial(self):
