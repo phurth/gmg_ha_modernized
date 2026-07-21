@@ -4,6 +4,8 @@ import binascii
 import ipaddress
 import logging
 
+from .const import STATUS_RETRIES, STATUS_TIMEOUT
+
 _LOGGER = logging.getLogger(__name__)
 
 def grills(hass, timeout=1, ip_bind_address='0.0.0.0'):
@@ -78,68 +80,45 @@ class grill:
         self.state = {}
 
     async def gmg_status_response(self, value_list):
-        """Process status response from grill."""
-        _LOGGER.debug(f"Raw status response: {value_list}, length: {len(value_list)}, hex: {binascii.hexlify(bytearray(value_list))}")
+        """Parse a binary status ('UR') frame from the grill.
+
+        Temperatures are little-endian 16-bit values (low byte, then high
+        byte). Byte offsets follow the established GMG UDP protocol.
+        """
+        _LOGGER.debug(
+            "Raw status: len=%d hex=%s",
+            len(value_list), binascii.hexlify(bytearray(value_list)),
+        )
+
+        def u16(low):
+            """Return the little-endian 16-bit value at byte offset `low`."""
+            if len(value_list) > low + 1:
+                return value_list[low] + (value_list[low + 1] << 8)
+            return None
+
         try:
-            # Try parsing as comma-separated ASCII string (for compatibility)
-            ascii_response = value_list.decode('utf-8', errors='replace')
-            _LOGGER.debug(f"ASCII response: {ascii_response}")
-            if ',' in ascii_response:
-                values = ascii_response.split(',')
-                self.state = {
-                    'on': int(values[30]) if len(values) > 30 and values[30].isdigit() else 0,
-                    'temp': int(values[2]) if len(values) > 2 and values[2].isdigit() else None,
-                    'temp_high': int(values[3]) if len(values) > 3 and values[3].isdigit() else None,
-                    'grill_set_temp': int(values[6]) if len(values) > 6 and values[6].isdigit() else None,
-                    'grill_set_temp_high': int(values[7]) if len(values) > 7 and values[7].isdigit() else None,
-                    'probe1_temp': int(values[4]) if len(values) > 4 and values[4].isdigit() else None,
-                    'probe1_temp_high': int(values[5]) if len(values) > 5 and values[5].isdigit() else None,
-                    'probe1_set_temp': int(values[27]) if len(values) > 27 and values[27].isdigit() else None,
-                    'probe1_set_temp_high': int(values[28]) if len(values) > 28 and values[28].isdigit() else None,
-                    'probe2_temp': int(values[16]) if len(values) > 16 and values[16].isdigit() else None,
-                    'probe2_temp_high': int(values[17]) if len(values) > 17 and values[17].isdigit() else None,
-                    'probe2_set_temp': int(values[18]) if len(values) > 18 and values[18].isdigit() else None,
-                    'probe2_set_temp_high': int(values[19]) if len(values) > 19 and values[19].isdigit() else None,
-                    'fireState': int(values[31]) if len(values) > 31 and values[31].isdigit() else None,
-                    'fireStatePercentage': int(values[32]) if len(values) > 32 and values[32].isdigit() else None,
-                    'warnState': int(values[23]) if len(values) > 23 and values[23].isdigit() else None
-                }
-            else:
-                # Parse as binary response
-                self.state = {
-                    'on': value_list[3] if len(value_list) > 3 else 0,  # Byte 3: 0x00 (off)
-                    'temp': int.from_bytes(value_list[16:18], 'big') if len(value_list) > 17 else None,  # Bytes 16-17: 0x0000
-                    'temp_high': int.from_bytes(value_list[18:20], 'big') if len(value_list) > 19 else None,  # Bytes 18-19: 0x0000
-                    'grill_set_temp': int.from_bytes(value_list[24:26], 'big') if len(value_list) > 25 else None,  # Bytes 24-25: 0x0000
-                    'grill_set_temp_high': int.from_bytes(value_list[26:28], 'big') if len(value_list) > 27 else None,  # Bytes 26-27: 0x0000
-                    'probe1_temp': int.from_bytes(value_list[28:30], 'big') if len(value_list) > 29 else None,  # Bytes 28-29: 0x0000
-                    'probe1_temp_high': int.from_bytes(value_list[30:32], 'big') if len(value_list) > 31 else None,  # Bytes 30-31: 0x0000
-                    'probe1_set_temp': int.from_bytes(value_list[32:34], 'big') if len(value_list) > 33 else None,  # Bytes 32-33: 0x0100
-                    'probe1_set_temp_high': int.from_bytes(value_list[34:36], 'big') if len(value_list) > 35 else None,  # Bytes 34-35: 0x0000
-                    'probe2_temp': int.from_bytes(value_list[36:38], 'big') if len(value_list) > 37 else None,  # Bytes 36-37: 0x0000
-                    'probe2_temp_high': int.from_bytes(value_list[38:40], 'big') if len(value_list) > 39 else None,  # Bytes 38-39: 0x0000
-                    'probe2_set_temp': int.from_bytes(value_list[40:42], 'big') if len(value_list) > 41 else None,  # Bytes 40-41: 0x00 (past data)
-                    'probe2_set_temp_high': int.from_bytes(value_list[42:44], 'big') if len(value_list) > 43 else None,  # Bytes 42-43: start of DC02...
-                    'fireState': value_list[44] if len(value_list) > 44 else None,  # Byte 44: start of DC02...
-                    'fireStatePercentage': value_list[40] if len(value_list) > 40 else None,  # Byte 40: 0x00
-                    'warnState': value_list[41] if len(value_list) > 41 else None  # Byte 41: start of DC02...
-                }
-                # Validate temperatures
-                for key in ['temp', 'grill_set_temp', 'probe1_temp', 'probe2_temp']:
-                    if self.state[key] is not None:
-                        if self.state[key] < 0 or self.state[key] > 1000:
-                            _LOGGER.warning(f"Invalid {key}: {self.state[key]}, setting to None")
-                            self.state[key] = None
-                        elif key in ['probe1_temp', 'probe2_temp'] and self.state[key] <= self.MIN_TEMP_F_PROBE:
-                            _LOGGER.debug(f"Probe {key} unplugged or ambient: {self.state[key]}, setting to None")
-                            self.state[key] = None
-                        elif key == 'temp' and not self.state['on'] and self.state[key] > 100:
-                            _LOGGER.debug(f"Grill off, invalid temp {self.state[key]}, setting to None")
-                            self.state[key] = None
-            _LOGGER.debug(f"Parsed status response: {self.state}")
+            self.state = {
+                'on': value_list[30] if len(value_list) > 30 else 0,
+                'temp': u16(2),
+                'grill_set_temp': u16(6),
+                'probe1_temp': u16(4),
+                'probe1_set_temp': u16(28),
+                'probe2_temp': u16(16),
+                'probe2_set_temp': u16(18),
+                'fireState': value_list[32] if len(value_list) > 32 else None,
+                'fireStatePercentage': value_list[33] if len(value_list) > 33 else None,
+                'warnState': value_list[24] if len(value_list) > 24 else None,
+            }
+            # An unplugged probe reads out of range; report it as unknown.
+            for key in ('probe1_temp', 'probe2_temp'):
+                val = self.state[key]
+                if val is None or val <= self.MIN_TEMP_F_PROBE or val > self.MAX_TEMP_F_PROBE:
+                    self.state[key] = None
+            _LOGGER.debug("Parsed status: %s", self.state)
         except Exception as e:
-            _LOGGER.error(f"Error processing status response: {e}, raw data: {value_list}")
-            self.state = {'on': 0, 'temp': None, 'grill_set_temp': None, 'probe1_temp': None, 'probe2_temp': None}
+            _LOGGER.error("Error processing status response: %s, raw=%s", e, value_list)
+            self.state = {'on': 0, 'temp': None, 'grill_set_temp': None,
+                          'probe1_temp': None, 'probe2_temp': None}
         return self.state
 
     async def set_temp(self, target_temp):
@@ -176,33 +155,32 @@ class grill:
         message = b'UK004!'
         return await self.send(message)
 
-    async def status(self):
-        """Get status of grill."""
-        _LOGGER.debug("Requesting status from grill at %s", self._ip)
-        status = None
-        count = 0
-        while status is None and count < 10:
-            status = await self.send(self.CODE_STATUS)
-            count += 1
-            _LOGGER.debug("Status attempt %d: %s (hex: %s)", count, status, binascii.hexlify(status) if status else None)
-        if status is None:
-            _LOGGER.error("No response from grill at %s after %d attempts", self._ip, count)
-            raise RuntimeError("No response from grill")
-        _LOGGER.debug("Raw status data before parsing: %s", status)
-        try:
-            return await self.gmg_status_response(status)
-        except Exception as e:
-            _LOGGER.error(f"Error parsing status data: {e}")
-            return {'on': 0, 'temp': None, 'grill_set_temp': None, 'probe1_temp': None, 'probe2_temp': None}
+    async def status(self, retries=STATUS_RETRIES, timeout=STATUS_TIMEOUT):
+        """Poll the grill for status.
 
-    async def serial(self):
-        """Get serial number of grill."""
-        serial = await self.send(self.CODE_SERIAL)
+        Retries a few times to ride out transient UDP drops, but fails fast
+        (short timeout, few attempts) so an unplugged grill doesn't stall the
+        caller. Raises RuntimeError when the grill can't be reached.
+        """
+        _LOGGER.debug("Requesting status from grill at %s", self._ip)
+        raw = None
+        for attempt in range(1, retries + 1):
+            raw = await self.send(self.CODE_STATUS, timeout=timeout)
+            if raw is not None:
+                break
+            _LOGGER.debug("Status attempt %d/%d: no response from %s", attempt, retries, self._ip)
+        if raw is None:
+            raise RuntimeError(f"No response from grill at {self._ip}")
+        return await self.gmg_status_response(raw)
+
+    async def serial(self, timeout=STATUS_TIMEOUT):
+        """Fetch and cache the grill's serial number. Returns '' if unreachable."""
+        serial = await self.send(self.CODE_SERIAL, timeout=timeout)
         if serial:
-            self._serial_number = serial.decode('utf-8', errors='replace')
+            self._serial_number = serial.decode('utf-8', errors='replace').strip()
             _LOGGER.debug("Received serial number: %s", self._serial_number)
         else:
-            _LOGGER.error("No serial number response from grill at %s", self._ip)
+            _LOGGER.warning("No serial number response from grill at %s", self._ip)
         return self._serial_number
 
     async def send(self, message, timeout=10):

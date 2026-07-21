@@ -1,60 +1,47 @@
-# Green Mountain Grill for Home Assistant
+# Green Mountain Grill — Home Assistant HACS Integration
 
-## **WARNING** This compoment is still in development. Use with caution!  
+Local control and monitoring of Wi-Fi Green Mountain Grill pellet smokers in Home Assistant, over the grill's local UDP protocol. No cloud, no account.
 
-## Installation
+> **Disclaimer:** This is an unofficial, community-maintained integration and is not affiliated with or endorsed by Green Mountain Grills. It builds on the original work of [@jwhitby91](https://github.com/jwhitby91) and the community fork lineage.
 
-Install via HACS 
+## Features
 
-<ul>
-    <li>click 3 dots in top right</li>
-    <li>Custom Repositories</li>
-    <li>add this github URI as integration</li>
-    <li>click add</li>
-    </br>
-    <li>click Exlore & download repo bottom right</li>
-    <li>Search & select Green Mountain Grill</li>
-    <li>Click install</li>
-</ul>
+| Entity | Type | Description |
+|--------|------|-------------|
+| Grill | `climate` | Current temperature, target temperature (settable), and power on/off (heat/off). Range 150–500 °F. |
+| Food Probe 1 | `sensor` | Probe 1 temperature (read-only). |
+| Food Probe 2 | `sensor` | Probe 2 temperature (read-only). |
 
-Add below to configuration.yaml in home assistant
+All entities are grouped under a single device identified by the grill's serial number.
 
-```yaml
-    climate:
-        - platform: gmg
-```
+## Requirements
 
-## Requirements 
+- Home Assistant 2025.1 or newer.
+- The grill and Home Assistant on the same network, with UDP port 8080 reachable between them.
+- A stable IP for the grill (a DHCP reservation is recommended so the configured host stays valid).
 
-<ul>
-    <li>UDP port 8080 open between home assistant & GMG</li>
-    <li>Auto discovery will discover multiple GMG devices if on same network as home assistant</li>
-</ul>
+## Installation (HACS)
 
-## TODO 
+1. In HACS, open the three-dot menu (top right) → **Custom repositories**.
+2. Add `https://github.com/phurth/gmg_ha_modernized` with category **Integration**, then **Add**.
+3. Search for **GMG Grill**, open it, and click **Download**.
+4. Restart Home Assistant.
 
-<ul>
-    <li>Sensors for
-        <ul>
-            <li>food probes (temperature monitor.. set temperature etc.) - in development.. Set them up as climate as you can set temp for them </li>
-            <li>
-                <ul>
-                    <li>Need to better detect when probes are unplugged</li>
-                </ul>
-            </li>
-            <li>Warning states..</li>
-            <li>Fire States</li>
-        </ul>
-    </li>
-    <li>Test cold smoke mode</li>
-    <li>Change Home assistant to use config flow for easier set up</li>
-</ul>
+## Configuration
 
-## Test list
+1. Go to **Settings → Devices & Services → Add Integration**.
+2. Search for **GMG Grill**.
+3. Enter the grill's IP address.
 
-<ul>
-    <li>Power on - successful</li>
-    <li>Power off - successful</li>
-    <li>Set temp - successful </br><b>Notes:</b> as recommended in GMG manual you shouldn't change temp until it reaches 150 F so I put in check to only change temp once that has been reached</li> 
-    <li>Probes - successful</li>
-</ul>
+The integration reads the grill's serial number on first setup and uses it as the stable device identity.
+
+## Notes & Limitations
+
+- **Local polling only.** The grill is polled every 30 seconds over UDP; there is no cloud dependency.
+- **Availability tracks reachability.** When the grill can't be reached (commonly because it's unplugged or powered off at the mains), all entities report `unavailable` and recover automatically once it's back. Polls fail fast so an unreachable grill never blocks Home Assistant.
+- **Probe state.** A probe that isn't plugged in reads `unknown` while the grill itself is reachable — distinct from the grill being `unavailable`.
+- **Temperatures are in °F**, matching the values the grill reports on the wire.
+
+## Credits
+
+Original integration by [@jwhitby91](https://github.com/jwhitby91); climate-API modernization from the community fork lineage. This fork adds a UI config flow, coordinator-based polling with proper availability handling, and stable serial-based device identity.

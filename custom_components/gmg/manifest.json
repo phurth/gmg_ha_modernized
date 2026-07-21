@@ -1,9 +1,10 @@
 {
   "domain": "gmg",
   "name": "GMG Grill",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "documentation": "https://github.com/phurth/gmg_ha_modernized",
   "codeowners": ["@phurth"],
+  "iot_class": "local_polling",
   "requirements": [],
   "config_flow": true
 }
