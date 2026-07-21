@@ -6,3 +6,6 @@ __pycache__/
 .DS_Store
 .venv/
 venv/
+
+# Local secrets — never commit
+secrets.md
